@@ -1,0 +1,128 @@
+import pandas as pd
+import streamlit as st
+
+# Cấu hình trang Streamlit
+st.set_page_config(page_title="Quản lý điểm sinh viên", layout="centered")
+
+# Tiêu đề ứng dụng
+st.title("QUẢN LÝ ĐIỂM SINH VIÊN")
+
+# 1. Dữ liệu mẫu 10 sinh viên
+# Trọng số: Chuyên cần (10%), Giữa kỳ (30%), Cuối kỳ (60%)
+data = {
+    "MSSV": [
+        "SV001",
+        "SV002",
+        "SV003",
+        "SV004",
+        "SV005",
+        "SV006",
+        "SV007",
+        "SV008",
+        "SV009",
+        "SV010",
+    ],
+    "Họ tên": [
+        "Nguyễn Văn An",
+        "Trần Thị Bích",
+        "Lê Hoàng Cường",
+        "Phạm Thị Dung",
+        "Hoàng Văn Em",
+        "Vũ Thị Phương",
+        "Đỗ Minh Giang",
+        "Bùi Thị Hoa",
+        "Ngô Văn Hùng",
+        "Dương Thị Kim",
+    ],
+    "Chuyên cần": [8.5, 9.0, 7.0, 6.5, 10.0, 8.0, 5.0, 9.5, 7.5, 8.0],
+    "Giữa kỳ": [7.5, 8.0, 6.0, 5.5, 9.0, 7.0, 4.5, 8.5, 6.5, 7.0],
+    "Cuối kỳ": [8.0, 8.5, 6.5, 6.0, 9.5, 7.5, 5.0, 9.0, 7.0, 7.5],
+}
+
+df = pd.DataFrame(data)
+
+
+# Hàm tính điểm tổng kết: Chuyên cần * 0.1 + Giữa kỳ * 0.3 + Cuối kỳ * 0.6
+def tinh_tong_ket(row):
+  return round(
+      row["Chuyên cần"] * 0.1 + row["Giữa kỳ"] * 0.3 + row["Cuối kỳ"] * 0.6, 2
+  )
+
+
+# Hàm xếp loại
+def xep_loại(diem):
+  if diem >= 8.5:
+    return "Giỏi"
+  elif diem >= 7.0:
+    return "Khá"
+  elif diem >= 5.0:
+    return "Trung bình"
+  else:
+    return "Yếu"
+
+
+# Thêm cột Tổng kết và Xếp loại vào DataFrame
+df["Tổng kết"] = df.apply(tinh_tong_ket, axis=1)
+df["Xếp loại"] = df["Tổng kết"].apply(xep_loại)
+
+# Hiển thị bảng điểm 10 sinh viên
+st.subheader("📋 Bảng điểm chi tiết của sinh viên")
+st.dataframe(df, use_container_width=True)
+
+# 2. Hiển thị thông tin thống kê
+st.subheader("📊 Thống kê chung của lớp")
+
+# Điểm trung bình của lớp
+dtb_lop = round(df["Tổng kết"].mean(), 2)
+st.metric(label="Điểm trung bình của lớp", value=dtb_lop)
+
+# Sinh viên có điểm tổng kết cao nhất và thấp nhất
+sv_cao_nhat = df.loc[df["Tổng kết"].idxmax()]
+sv_thap_nhat = df.loc[df["Tổng kết"].idxmin()]
+
+col1, col2 = st.columns(2)
+with col1:
+  st.success(
+      f"**Điểm cao nhất:** {sv_cao_nhat['Họ tên']} ({sv_cao_nhat['MSSV']}) -"
+      f" {sv_cao_nhat['Tổng kết']} điểm"
+  )
+with col2:
+  st.error(
+      f"**Điểm thấp nhất:** {sv_thap_nhat['Họ tên']} ({sv_thap_nhat['MSSV']}) -"
+      f" {sv_thap_nhat['Tổng kết']} điểm"
+  )
+
+# Số sinh viên đạt (Điểm tổng kết >= 5.0)
+so_sv_dat = len(df[df["Tổng kết"] >= 5.0])
+st.info(f"✨ **Số sinh viên đạt (>= 5.0):** {so_sv_dat} / 10 sinh viên")
+
+# 3. Chọn sinh viên qua danh sách xổ xuống (Selectbox)
+st.subheader("🔍 Tra cứu thông tin cá nhân sinh viên")
+danh_sach_ten = df["Họ tên"].tolist()
+selected_student_name = st.selectbox("Chọn tên sinh viên:", danh_sach_ten)
+
+# Lọc thông tin sinh viên được chọn
+selected_student_info = df[df["Họ tên"] == selected_student_name].iloc[0]
+
+# Hiển thị chi tiết điểm của sinh viên đó
+c1, c2, c3, c4, c5 = st.columns(5)
+c1.metric("Chuyên cần", selected_student_info["Chuyên cần"])
+c2.metric("Giữa kỳ", selected_student_info["Giữa kỳ"])
+c3.metric("Cuối kỳ", selected_student_info["Cuối kỳ"])
+c4.metric("Tổng kết", selected_student_info["Tổng kết"])
+c5.metric("Xếp loại", selected_student_info["Xếp loại"])
+
+# 4. Hiển thị biểu đồ cột điểm tổng kết
+st.subheader("📈 Biểu đồ điểm tổng kết của 10 sinh viên")
+chart_data = df.set_index("Họ tên")[["Tổng kết"]]
+st.bar_chart(chart_data)
+
+# 5. Thông tin người tạo ứng dụng ở chân trang (kích thước chữ nhỏ)
+st.markdown("---")
+st.markdown(
+    "<p style='text-align: center; font-size: small; color: gray;'>"
+    "Ứng dụng được tạo bởi: <b>Nguyễn Trung Hiếu</b> - MSSV:"
+    " <b>045208006328</b>"
+    "</p>",
+    unsafe_allow_html=True,
+)inde
